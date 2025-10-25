@@ -7,7 +7,7 @@ body {
 }
 
 .container {
-  max-width: 800px;
+  max-width: 900px;
   margin: 50px auto;
   text-align: center;
 }
@@ -30,16 +30,35 @@ h1 {
   color: #353b48;
 }
 
-#status {
-  font-size: 1.5em;
+#modes button {
+  margin: 5px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background-color: #718093;
+  color: white;
   font-weight: bold;
 }
 
-#mode {
-  font-size: 1.2em;
-  font-weight: bold;
+#modes button.active {
+  background-color: #44bd32;
 }
 
-p {
-  margin: 0;
+input {
+  display: block;
+  margin: 10px auto;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  width: 70%;
+}
+
+button#saveContact {
+  background-color: #40739e;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
 }
