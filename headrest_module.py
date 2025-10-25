@@ -25,7 +25,7 @@ GPIO.setup(ECHO, GPIO.IN)
 GPIO.setup(BUZZER, GPIO.OUT)
 
 # ------------------- Firebase Setup ------------------- #
-cred = credentials.Certificate('firebase-credentials.json')  # Add your JSON
+cred = credentials.Certificate('firebase-credentials.json')  
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://YOUR_PROJECT.firebaseio.com/'
 })
