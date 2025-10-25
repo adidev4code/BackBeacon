@@ -1,8 +1,13 @@
 /* ------------------------------------------------------------
    BackBeacon Dashboard - Real-Time Monitoring Script
--------------------------------------------------------------*/
+   ------------------------------------------------------------
+   - Fetches posture data and mode from Firebase Realtime Database
+   - Updates webpage with posture status, distance, timestamp, and current mode
+   - Uses color and text to show user's posture feedback
+------------------------------------------------------------- */
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, onValue, push } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { firebaseConfig } from "./firebase-config.js";
 
 // Initialize Firebase
@@ -14,27 +19,31 @@ const backBeaconRef = ref(database, 'BackBeacon');
 const statusElem = document.getElementById("status");
 const distanceElem = document.getElementById("distance");
 const timestampElem = document.getElementById("timestamp");
+const modeElem = document.getElementById("mode");
 
-// Real-time listener
+// Realtime data listener
 onValue(backBeaconRef, (snapshot) => {
   const data = snapshot.val();
   if (data) {
-    const { status, distance_cm, timestamp } = data;
-    statusElem.textContent = `Status: ${status}`;
-    distanceElem.textContent = `Distance: ${distance_cm} cm`;
-    timestampElem.textContent = `Last Updated: ${timestamp}`;
+    const { status, distance_cm, timestamp, mode } = data;
 
-    statusElem.style.color = status === "SLOUCH DETECTED" ? "red" :
-                             status === "GOOD POSTURE" ? "green" : "gray";
+    statusElem.textContent = status;
+    distanceElem.textContent = `${distance_cm} cm`;
+    timestampElem.textContent = timestamp;
+    modeElem.textContent = mode || "Default";
+
+    // Color coding for posture
+    if (status === "SLOUCH DETECTED") {
+      statusElem.style.color = "red";
+    } else if (status === "GOOD POSTURE") {
+      statusElem.style.color = "green";
+    } else {
+      statusElem.style.color = "gray";
+    }
   } else {
-    statusElem.textContent = "No data available.";
-    distanceElem.textContent = "";
-    timestampElem.textContent = "";
+    statusElem.textContent = "No data available";
+    distanceElem.textContent = "-";
+    timestampElem.textContent = "-";
+    modeElem.textContent = "-";
   }
 });
-
-// Optional function to send data manually (for testing)
-export function sendPostureData(status, distance) {
-  const timestamp = new Date().toISOString();
-  push(backBeaconRef, { status, distance_cm: distance, timestamp });
-}
