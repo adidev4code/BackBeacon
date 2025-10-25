@@ -1,41 +1,57 @@
 // Code:
 
-// ------------------- Pin Definitions -------------------
-const int fsrPin = A0;           // Pressure sensor
-const int motorPin = 9;          // Vibration motor PWM
-const int threshold = 200;       // Sitting threshold
+/* ------------------------------------------------------------
+   BackBeacon Project - Seat Module (Arduino Nano 33 IoT)
+   ------------------------------------------------------------
+   - Detects seat occupancy using FSR-402 pressure sensor
+   - Activates vibration motor for feedback when commanded
+   - Sends seat status to Raspberry Pi via Serial (UART)
+   ------------------------------------------------------------
+   Author: Aditya Sharma
+   Unit: SIT210 - Embedded Systems Development
+------------------------------------------------------------- */
 
-// ------------------- Variables ------------------------
-int fsrValue = 0;
-char piCommand = 'N';            // Command received from Pi
+const int fsrPin = A0;         // FSR pressure sensor pin
+const int motorPin = 9;        // Vibration motor control pin
+int fsrReading = 0;            // Pressure sensor value
+bool seatOccupied = false;     // Seat occupancy flag
+bool vibrationCommand = false; // Command from Pi
 
-// ------------------- Setup ----------------------------
 void setup() {
+  Serial.begin(9600);          // Start serial communication
   pinMode(fsrPin, INPUT);
   pinMode(motorPin, OUTPUT);
-  Serial.begin(9600);            // Serial communication to Pi
+  digitalWrite(motorPin, LOW);
 }
 
-// ------------------- Loop -----------------------------
 void loop() {
-  fsrValue = analogRead(fsrPin);
+  fsrReading = analogRead(fsrPin);
 
-  // Send seat status to Pi
-  if (fsrValue > threshold) {
-    Serial.println("ACTIVE");    // User is sitting
+  // Check if someone is sitting
+  if (fsrReading > 300) {
+    seatOccupied = true;
   } else {
-    Serial.println("INACTIVE");  // Seat empty
-    digitalWrite(motorPin, LOW); // Turn off vibration
+    seatOccupied = false;
   }
 
-  // Read command from Pi
+  // Send seat occupancy status to Raspberry Pi
+  Serial.print("SEAT:");
+  Serial.println(seatOccupied ? "1" : "0");
+
+  // Check for commands from Raspberry Pi
   if (Serial.available() > 0) {
-    piCommand = Serial.read();
-    if (piCommand == 'V') {      
-      analogWrite(motorPin, 200); // Activate motor
-    } else {
-      digitalWrite(motorPin, LOW);
+    String command = Serial.readStringUntil('\n');
+    command.trim();
+
+    if (command == "VIB_ON") {
+      digitalWrite(motorPin, HIGH);   // Start vibration
+      vibrationCommand = true;
+    } 
+    else if (command == "VIB_OFF") {
+      digitalWrite(motorPin, LOW);    // Stop vibration
+      vibrationCommand = false;
     }
   }
-  delay(100); // Stability delay
+
+  delay(500);  // Short delay for stable serial communication
 }
