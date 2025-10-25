@@ -2,15 +2,33 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BackBeacon Dashboard</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>BackBeacon - Posture Dashboard</h1>
-  <div class="card">
-    <p id="status">Status: --</p>
-    <p id="distance">Distance: -- cm</p>
-    <p id="timestamp">Last Updated: --</p>
+  <div class="container">
+    <h1>BackBeacon Dashboard</h1>
+
+    <div class="card">
+      <h2>Posture Status</h2>
+      <p id="status">Loading...</p>
+    </div>
+
+    <div class="card">
+      <h2>Head Distance</h2>
+      <p id="distance">Loading...</p>
+    </div>
+
+    <div class="card">
+      <h2>Last Updated</h2>
+      <p id="timestamp">Loading...</p>
+    </div>
+
+    <div class="card">
+      <h2>Current Mode</h2>
+      <p id="mode">Loading...</p>
+    </div>
   </div>
 
   <script type="module" src="script.js"></script>
