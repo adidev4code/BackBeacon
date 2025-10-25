@@ -1,1 +1,25 @@
+//Code:
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>BackBeacon Dashboard</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    .log { margin-bottom: 10px; }
+    .good { color: green; }
+    .bad { color: red; }
+  </style>
+</head>
+<body>
+  <h2>BackBeacon Dashboard</h2>
+  <div id="logs">
+    {% for entry in logs %}
+      <div class="log {{ entry.posture }}">
+        Time: {{ entry.timestamp }} - Posture: {{ entry.posture }}
+      </div>
+    {% endfor %}
+  </div>
+</body>
+</html>
 
