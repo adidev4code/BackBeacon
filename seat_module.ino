@@ -1,14 +1,9 @@
-// Code:
-
 /* ------------------------------------------------------------
    BackBeacon Project - Seat Module (Arduino Nano 33 IoT)
    ------------------------------------------------------------
    - Detects seat occupancy using FSR-402 pressure sensor
    - Activates vibration motor for feedback when commanded
    - Sends seat status to Raspberry Pi via Serial (UART)
-   ------------------------------------------------------------
-   Author: Aditya Sharma
-   Unit: SIT210 - Embedded Systems Development
 ------------------------------------------------------------- */
 
 const int fsrPin = A0;         // FSR pressure sensor pin
