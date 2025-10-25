@@ -1,4 +1,5 @@
-export const firebaseConfig = {
+// Firebase configuration
+const firebaseConfig = {
   apiKey: "AIzaSyCc8PCc1IYikEQXJ4_5avlOJM9JqIrH7Ac",
   authDomain: "backbeacon.firebaseapp.com",
   projectId: "backbeacon",
@@ -6,3 +7,6 @@ export const firebaseConfig = {
   messagingSenderId: "287132718497",
   appId: "1:287132718497:web:99e72324a1ca257f1627e0"
 };
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
