@@ -27,7 +27,7 @@ GPIO.setup(BUZZER, GPIO.OUT)
 # ------------------- Firebase Setup ------------------- #
 cred = credentials.Certificate('firebase-credentials.json')  
 firebase_admin.initialize_app(cred, {
-    'databaseURL': 'https://YOUR_PROJECT.firebaseio.com/'
+    'databaseURL': 'https://backbeacon-default-rtdb.asia-southeast1.firebasedatabase.app/'
 })
 ref = db.reference('BackBeacon')
 
