@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BackBeacon Dashboard</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      background: #0a0a0a;
+      color: white;
+      font-family: 'Poppins', sans-serif;
+      overflow-x: hidden;
+    }
+    header {
+      background: linear-gradient(90deg, #0e4af7, #00d4ff);
+      padding: 15px 30px;
+      text-align: left;
+      font-size: 1.6rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+    main {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      padding: 30px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .card {
+      background: #1a1a1a;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.4);
+      flex: 1;
+      margin: 0 15px;
+    }
+    .indicators {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-top: 25px;
+    }
+    .indicator {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      background: #111;
+      border: 1px solid #333;
+      transition: 0.3s;
+    }
+    .indicator.active {
+      background: #0e4af7;
+      color: white;
+      font-weight: 600;
+    }
+    canvas {
+      width: 100%;
+      height: 350px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>BackBeacon - Live Posture Dashboard</header>
+
+  <main>
+    <!-- Left Side: Indicators -->
+    <div class="card" id="statusCard">
+      <h2>Posture Status</h2>
+      <div class="indicators">
+        <div class="indicator" id="good">🟢 Good Posture</div>
+        <div class="indicator" id="bad">🟠 Bad Posture</div>
+        <div class="indicator" id="verybad">🔴 Very Bad Posture</div>
+        <div class="indicator" id="seat">💺 Seat: Unknown</div>
+      </div>
+    </div>
+
+    <!-- Right Side: Live Graph -->
+    <div class="card">
+      <h2>Posture Angle Graph</h2>
+      <canvas id="angleChart"></canvas>
+    </div>
+  </main>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "backbeacon.firebaseapp.com",
+      databaseURL: "https://backbeacon-default-rtdb.firebaseio.com/",
+      projectId: "backbeacon",
+      storageBucket: "backbeacon.appspot.com",
+      messagingSenderId: "YOUR_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const ctx = document.getElementById('angleChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Posture Angle (°)',
+          data: [],
+          borderColor: '#00d4ff',
+          borderWidth: 2,
+          fill: false
+        }]
+      },
+      options: {
+        scales: {
+          y: { min: 0, max: 50 }
+        }
+      }
+    });
+
+    const good = document.getElementById("good");
+    const bad = document.getElementById("bad");
+    const verybad = document.getElementById("verybad");
+    const seat = document.getElementById("seat");
+
+    db.ref("/backbeacon/data").on("value", snapshot => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      const angle = data.angle;
+      const posture = data.posture;
+      const seatStatus = data.seat;
+
+      chart.data.labels.push(data.timestamp);
+      chart.data.datasets[0].data.push(angle);
+      if (chart.data.labels.length > 10) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+      }
+      chart.update();
+
+      [good, bad, verybad].forEach(el => el.classList.remove("active"));
+      if (posture === "GOOD") good.classList.add("active");
+      else if (posture === "BAD") bad.classList.add("active");
+      else verybad.classList.add("active");
+
+      seat.innerText = "💺 Seat: " + seatStatus;
+    });
+  </script>
+</body>
+</html>
