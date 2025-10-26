@@ -193,13 +193,3 @@ pip install RPi.GPIO firebase-admin
 ![Workflow](WorkFlow.png)
 
 ---
-
-## 10. Future Enhancements
-
-* Multi-user profiles with personalized settings
-* Mobile push notifications for alerts
-* Analytics and visual graphs for posture trends
-* Integration with wearable devices for more advanced feedback
-
----
-
