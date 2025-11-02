@@ -1,89 +1,98 @@
-"""
--------------------------------------------------------------
-BackBeacon - Headrest Module (Raspberry Pi 4)
--------------------------------------------------------------
-- Monitors head distance via HC-SR04 ultrasonic sensor
-- Triggers buzzer when slouching
-- Sends posture data to Firebase Realtime Database
--------------------------------------------------------------
-"""
-
+# ----------------------------------------------------
+# 🧍‍♂️ BackBeacon - Headrest Module (Raspberry Pi)
+# ----------------------------------------------------
 import RPi.GPIO as GPIO
-import time
-from datetime import datetime
+import serial, time, json
 import firebase_admin
 from firebase_admin import credentials, db
 
-# ------------------- GPIO Setup ------------------- #
-TRIG = 17
-ECHO = 27
-BUZZER = 22
-
+# --- GPIO Setup ---
 GPIO.setmode(GPIO.BCM)
+
+TRIG = 23
+ECHO = 24
+BUZZER1 = 17
+BUZZER2 = 27
+
 GPIO.setup(TRIG, GPIO.OUT)
 GPIO.setup(ECHO, GPIO.IN)
-GPIO.setup(BUZZER, GPIO.OUT)
+GPIO.setup(BUZZER1, GPIO.OUT)
+GPIO.setup(BUZZER2, GPIO.OUT)
 
-# ------------------- Firebase Setup ------------------- #
-cred = credentials.Certificate('firebase-credentials.json')  
+# --- Firebase Setup ---
+cred = credentials.Certificate("firebase-key.json")  # download your key from Firebase
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://backbeacon-default-rtdb.asia-southeast1.firebasedatabase.app/'
 })
-ref = db.reference('BackBeacon')
 
-# ------------------- Constants ------------------- #
-GOOD_THRESHOLD = 20    # cm
-BUZZER_DURATION = 0.5  # seconds
+ref = db.reference("/backbeacon")
 
-# ------------------- Functions ------------------- #
+# --- Serial Setup to Arduino ---
+ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
+time.sleep(2)
+
+print("Headrest Module Started...")
+
+ideal_distance = None
+slouch_threshold = 5.0  # cm beyond ideal distance to trigger alert
+
 def measure_distance():
-    GPIO.output(TRIG, False)
-    time.sleep(0.05)
     GPIO.output(TRIG, True)
     time.sleep(0.00001)
     GPIO.output(TRIG, False)
 
-    pulse_start = time.time()
-    pulse_end = time.time()
-
+    start, stop = time.time(), time.time()
     while GPIO.input(ECHO) == 0:
-        pulse_start = time.time()
-
+        start = time.time()
     while GPIO.input(ECHO) == 1:
-        pulse_end = time.time()
+        stop = time.time()
+    elapsed = stop - start
+    return round((elapsed * 34300) / 2, 2)
 
-    pulse_duration = pulse_end - pulse_start
-    distance = pulse_duration * 17150
-    distance = round(distance, 2)
-    return distance
-
-def trigger_buzzer(duration):
-    GPIO.output(BUZZER, GPIO.HIGH)
-    time.sleep(duration)
-    GPIO.output(BUZZER, GPIO.LOW)
-
-def update_firebase(status, distance):
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    ref.set({
-        'status': status,
-        'distance_cm': distance,
-        'timestamp': timestamp
-    })
-
-# ------------------- Main Loop ------------------- #
 try:
     while True:
-        distance = measure_distance()
+        if ser.in_waiting > 0:
+            seat_status = ser.readline().decode().strip()
 
-        if distance > GOOD_THRESHOLD:
-            status = "GOOD POSTURE"
-        else:
-            status = "SLOUCH DETECTED"
-            trigger_buzzer(BUZZER_DURATION)
+            if seat_status == "SEATED":
+                dist = measure_distance()
+                if ideal_distance is None:
+                    ideal_distance = dist
+                    print(f"Ideal posture set at {dist} cm")
 
-        update_firebase(status, distance)
-        print(f"{status} | Distance: {distance} cm")
-        time.sleep(1)
+                diff = dist - ideal_distance
+
+                if diff > slouch_threshold:
+                    print("⚠️ Slouch Detected")
+                    ser.write(b"SLOUCH_ALERT\n")   # Vibrate on Arduino
+                    GPIO.output(BUZZER1, True)
+                    GPIO.output(BUZZER2, True)
+                    time.sleep(5)
+                    GPIO.output(BUZZER1, False)
+                    GPIO.output(BUZZER2, False)
+
+                    posture = "Bad"
+                else:
+                    posture = "Good"
+            else:
+                posture = "Empty"
+                ideal_distance = None
+
+            # --- Upload data to Firebase ---
+            data = {
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "seat_status": seat_status,
+                "posture": posture,
+                "distance": ideal_distance if ideal_distance else 0
+            }
+            ref.push(data)
+
+            print("Data sent to Firebase:", data)
+
+        time.sleep(2)
 
 except KeyboardInterrupt:
+    print("Stopping program...")
+finally:
     GPIO.cleanup()
+    ser.close()
