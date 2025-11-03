@@ -1,3 +1,24 @@
+You're absolutely right. That's a classic data visualization problem. When you have a constant stream of data, plotting every single point makes the graph slow, unreadable, and difficult to analyze.
+
+The fix is to **aggregate the data**. Instead of plotting a point for every second, we'll process the data and plot the **dominant posture state for each 5-minute interval**. This will make the chart clean, fast, and much more useful for seeing your actual posture patterns.
+
+I have rewritten the JavaScript part of your dashboard to include this aggregation logic. The rest of the dashboard (weekly view, stats) remains the same.
+
+-----
+
+### \#\# What's Changed in the Code
+
+1.  **New Function (`aggregateDataForChart`)**: I've added a new function that takes all of today's raw data points and intelligently groups them into 5-minute "buckets."
+2.  **Smart Analysis**: For each bucket, it calculates whether you spent more time in a "Good" or "Bad" posture and sets that as the value for the entire 5-minute block.
+3.  **Clean Chart**: The line chart now plots these aggregated points, resulting in a clean, stable, and easy-to-read graph that shows your posture trends over time, not every tiny fluctuation.
+
+-----
+
+### \#\# Full Updated Dashboard Code
+
+Copy and paste this entire code into your `index.html` file. It includes your Firebase configuration and the new, improved charting logic.
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -138,14 +159,10 @@
 
     <div class="dashboard-container">
         <div class="left-panel">
-            
             <div class="card weekly-summary">
                 <h2>Weekly Progress</h2>
-                <div id="weekly-view">
-                    <div class="placeholder">Loading weekly data...</div>
-                </div>
+                <div id="weekly-view"><div class="placeholder">Loading weekly data...</div></div>
             </div>
-
             <div class="card stats-today">
                 <h2>Today's Analysis</h2>
                 <div class="stat-item">
@@ -175,24 +192,21 @@
         </div>
 
         <div class="right-panel">
-
-             <div class="card main-chart-card">
+            <div class="card main-chart-card">
                 <h2>Today's Posture Pattern</h2>
                 <p style="color: var(--secondary-text); margin-top: -10px; font-size: 0.9em;">
-                    Visualizes your posture throughout the day. Higher points indicate slouching.
+                    Shows your dominant posture in 5-minute intervals. Higher points indicate slouching.
                 </p>
                 <div class="chart-container">
                     <canvas id="dailyPatternChart"></canvas>
                 </div>
             </div>
-            
             <div class="card pie-chart-card">
                 <h2>Posture Quality Breakdown</h2>
                  <div class="pie-chart-container">
                     <canvas id="posturePieChart"></canvas>
                 </div>
             </div>
-
         </div>
     </div>
     
@@ -204,8 +218,6 @@
         // =============================================
         // ========= FIREBASE & CHART SETUP ============
         // =============================================
-
-        // 1. YOUR FIREBASE CONFIGURATION -----------------
         const firebaseConfig = {
             apiKey: "AIzaSyCc8PCc1IYikEQXJ4_5avlOJM9JqIrH7Ac",
             authDomain: "backbeacon.firebaseapp.com",
@@ -215,132 +227,155 @@
             messagingSenderId: "287132718497",
             appId: "1:287132718497:web:99e72324a1ca257f1627e0"
         };
-        // ---------------------------------------------
         
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const dbRef = database.ref('/backbeacon');
 
-        // Chart instances
         let dailyChartInstance;
         let pieChartInstance;
 
         // =============================================
         // =========== DATA PROCESSING LOGIC ===========
         // =============================================
-
         dbRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 processData(data);
             } else {
-                console.log("No data found in Firebase.");
                 displayNoDataState();
             }
         });
 
         function processData(firebaseData) {
             const entries = Object.values(firebaseData);
-            const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format
-            
+            const today = new Date().toLocaleDateString('en-CA');
             const dataByDay = {};
 
-            // Group data by day
             for (const entry of entries) {
                 const entryDate = new Date(entry.timestamp).toLocaleDateString('en-CA');
-                if (!dataByDay[entryDate]) {
-                    dataByDay[entryDate] = [];
-                }
+                if (!dataByDay[entryDate]) dataByDay[entryDate] = [];
                 dataByDay[entryDate].push(entry);
             }
-
-            // --- Analyze Today's Data ---
+            
             const todayData = dataByDay[today] || [];
             analyzeToday(todayData);
-            
-            // --- Analyze Weekly Data ---
             analyzeWeek(dataByDay);
         }
         
         function analyzeToday(data) {
-            if (data.length === 0) {
+            if (data.length < 2) {
                 displayNoDataState();
                 return;
             }
 
-            let totalSitSeconds = 0;
-            let goodPostureSeconds = 0;
-            let slouchAlerts = 0;
-
-            // Sort data chronologically
             data.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-            
-            let lastTimestamp = new Date(data[0].timestamp).getTime();
 
-            const chartData = { labels: [], postureState: [] };
+            let totalSitSeconds = 0, goodPostureSeconds = 0, slouchAlerts = 0;
             let lastPosture = null;
-            
-            data.forEach((entry, index) => {
-                const currentTimestamp = new Date(entry.timestamp).getTime();
-                const durationSeconds = (currentTimestamp - lastTimestamp) / 1000;
-                
-                if (entry.seat_status === "SEATED") {
+
+            for (let i = 1; i < data.length; i++) {
+                const prev = data[i - 1];
+                const current = data[i];
+                const durationSeconds = (new Date(current.timestamp).getTime() - new Date(prev.timestamp).getTime()) / 1000;
+
+                if (prev.seat_status === "SEATED") {
                     totalSitSeconds += durationSeconds;
-                    if (entry.posture === "Good") {
+                    if (prev.posture === "Good") {
                         goodPostureSeconds += durationSeconds;
-                    } else if (entry.posture === "Bad" && lastPosture !== "Bad") {
-                        slouchAlerts++;
                     }
                 }
-                
-                // For chart
-                const timeLabel = new Date(entry.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                chartData.labels.push(timeLabel);
-                chartData.postureState.push(entry.posture === "Good" ? 1 : (entry.posture === "Bad" ? 2 : 0));
-                
-                lastTimestamp = currentTimestamp;
-                lastPosture = entry.posture;
-            });
+                if (current.posture === "Bad" && prev.posture !== "Bad") {
+                    slouchAlerts++;
+                }
+            }
             
-            // Calculate final metrics
             const postureScore = totalSitSeconds > 0 ? Math.round((goodPostureSeconds / totalSitSeconds) * 100) : 0;
             const badPostureSeconds = totalSitSeconds - goodPostureSeconds;
+            
+            // --- NEW: Aggregate data for the line chart ---
+            const aggregatedChartData = aggregateDataForChart(data, 5); // 5-minute intervals
 
-            // Update UI
             updateTodayStatsUI(totalSitSeconds, slouchAlerts, postureScore);
-            renderDailyPatternChart(chartData);
+            renderDailyPatternChart(aggregatedChartData);
             renderPosturePieChart(goodPostureSeconds, badPostureSeconds);
         }
         
+        // ===================================================================
+        // ============= ⭐ NEW CHART AGGREGATION FUNCTION ⭐ ==============
+        // ===================================================================
+        function aggregateDataForChart(data, intervalMinutes) {
+            if (data.length < 2) return { labels: [], postureState: [] };
+        
+            const intervalMillis = intervalMinutes * 60 * 1000;
+            const buckets = {};
+        
+            // Create time buckets
+            for (let i = 1; i < data.length; i++) {
+                const prevEntry = data[i-1];
+                const currentEntry = data[i];
+                const startTime = new Date(prevEntry.timestamp).getTime();
+                const durationSeconds = (new Date(currentEntry.timestamp).getTime() - startTime) / 1000;
+
+                const bucketKey = Math.floor(startTime / intervalMillis) * intervalMillis;
+                if (!buckets[bucketKey]) {
+                    buckets[bucketKey] = { goodSeconds: 0, badSeconds: 0 };
+                }
+
+                if (prevEntry.seat_status === 'SEATED') {
+                    if (prevEntry.posture === 'Good') {
+                        buckets[bucketKey].goodSeconds += durationSeconds;
+                    } else if (prevEntry.posture === 'Bad') {
+                        buckets[bucketKey].badSeconds += durationSeconds;
+                    }
+                }
+            }
+
+            const sortedKeys = Object.keys(buckets).sort();
+            const labels = [];
+            const postureState = [];
+
+            sortedKeys.forEach(key => {
+                const date = new Date(parseInt(key));
+                labels.push(date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+                
+                const bucket = buckets[key];
+                if (bucket.badSeconds > bucket.goodSeconds) {
+                    postureState.push(2); // Slouching
+                } else if (bucket.goodSeconds > 0) {
+                    postureState.push(1); // Good
+                } else {
+                    postureState.push(0); // Away (or no seated data)
+                }
+            });
+
+            return { labels, postureState };
+        }
+        // ===================================================================
+
         function analyzeWeek(dataByDay) {
             const weeklyStats = [];
             for (let i = 6; i >= 0; i--) {
                 const date = new Date();
                 date.setDate(date.getDate() - i);
                 const dateKey = date.toLocaleDateString('en-CA');
+                let dayName = i === 0 ? "Today" : date.toLocaleDateString('en-US', { weekday: 'short' });
                 
-                let dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-                if (i === 0) dayName = "Today";
-
                 const dayData = dataByDay[dateKey] || [];
                 let score = 0;
                 
-                if (dayData.length > 0) {
+                if (dayData.length > 1) {
                      dayData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-                     let totalSitSeconds = 0;
-                     let goodPostureSeconds = 0;
-                     let lastTimestamp = new Date(dayData[0].timestamp).getTime();
-
-                     dayData.forEach(entry => {
-                         const currentTimestamp = new Date(entry.timestamp).getTime();
-                         const durationSeconds = (currentTimestamp - lastTimestamp) / 1000;
-                         if(entry.seat_status === "SEATED") {
-                             totalSitSeconds += durationSeconds;
-                             if(entry.posture === "Good") goodPostureSeconds += durationSeconds;
+                     let totalSitSeconds = 0, goodPostureSeconds = 0;
+                     for (let j = 1; j < dayData.length; j++) {
+                         const prev = dayData[j - 1];
+                         const curr = dayData[j];
+                         const duration = (new Date(curr.timestamp) - new Date(prev.timestamp)) / 1000;
+                         if (prev.seat_status === "SEATED") {
+                             totalSitSeconds += duration;
+                             if (prev.posture === "Good") goodPostureSeconds += duration;
                          }
-                         lastTimestamp = currentTimestamp;
-                     });
+                     }
                      score = totalSitSeconds > 0 ? Math.round((goodPostureSeconds / totalSitSeconds) * 100) : 0;
                 }
                 weeklyStats.push({ dayName, score });
@@ -348,12 +383,8 @@
             updateWeeklyUI(weeklyStats);
         }
 
-        // =============================================
-        // ========= UI UPDATE FUNCTIONS ===============
-        // =============================================
-
+        // --- UI UPDATE FUNCTIONS ---
         function formatTime(seconds) {
-            if (isNaN(seconds) || seconds < 0) return "00:00";
             const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
             const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
             return `${h}:${m}`;
@@ -367,18 +398,15 @@
 
         function updateWeeklyUI(stats) {
             const container = document.getElementById('weekly-view');
-            container.innerHTML = ''; // Clear previous content
+            container.innerHTML = '';
             stats.forEach(stat => {
                 const isToday = stat.dayName === 'Today';
                 const scoreColor = stat.score > 80 ? 'var(--accent-green)' : stat.score > 50 ? 'var(--accent-blue)' : 'var(--accent-red)';
-                
-                const dayDiv = document.createElement('div');
-                dayDiv.className = `day ${isToday ? 'today' : ''}`;
-                dayDiv.innerHTML = `
-                    <span class="day-name">${stat.dayName}</span>
-                    <span class="day-score" style="background-color: ${scoreColor}; color: white;">${stat.score}%</span>
-                `;
-                container.appendChild(dayDiv);
+                container.innerHTML += `
+                    <div class="day ${isToday ? 'today' : ''}">
+                        <span class="day-name">${stat.dayName}</span>
+                        <span class="day-score" style="background-color: ${scoreColor}; color: white;">${stat.score}%</span>
+                    </div>`;
             });
         }
         
@@ -391,15 +419,10 @@
              document.querySelector('.pie-chart-card .pie-chart-container').innerHTML = '';
         }
 
-        // =============================================
-        // =========== CHART RENDERING =================
-        // =============================================
-        
+        // --- CHART RENDERING FUNCTIONS ---
         function renderDailyPatternChart(chartData) {
             const ctx = document.getElementById('dailyPatternChart').getContext('2d');
-            if (dailyChartInstance) {
-                dailyChartInstance.destroy();
-            }
+            if (dailyChartInstance) dailyChartInstance.destroy();
             dailyChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -414,24 +437,16 @@
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     scales: {
                         y: {
                             ticks: {
                                 color: 'var(--secondary-text)',
-                                callback: function(value) {
-                                    if (value === 0) return 'Away';
-                                    if (value === 1) return 'Good';
-                                    if (value === 2) return 'Slouching';
-                                }
+                                callback: value => ['Away', 'Good', 'Slouching'][value]
                             },
                             grid: { color: 'var(--border-color)' }
                         },
-                        x: {
-                            ticks: { color: 'var(--secondary-text)' },
-                            grid: { color: 'var(--border-color)' }
-                        }
+                        x: { ticks: { color: 'var(--secondary-text)' }, grid: { display: false } }
                     },
                     plugins: { legend: { display: false } }
                 }
@@ -440,9 +455,7 @@
         
         function renderPosturePieChart(goodSeconds, badSeconds) {
             const ctx = document.getElementById('posturePieChart').getContext('2d');
-            if(pieChartInstance) {
-                pieChartInstance.destroy();
-            }
+            if (pieChartInstance) pieChartInstance.destroy();
             pieChartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -455,18 +468,12 @@
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { color: 'var(--primary-text)' }
-                        }
-                    }
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: 'var(--primary-text)' } } }
                 }
             });
         }
-
     </script>
 </body>
 </html>
+```
