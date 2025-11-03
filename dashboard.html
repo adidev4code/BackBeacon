@@ -1,24 +1,3 @@
-You're absolutely right. That's a classic data visualization problem. When you have a constant stream of data, plotting every single point makes the graph slow, unreadable, and difficult to analyze.
-
-The fix is to **aggregate the data**. Instead of plotting a point for every second, we'll process the data and plot the **dominant posture state for each 5-minute interval**. This will make the chart clean, fast, and much more useful for seeing your actual posture patterns.
-
-I have rewritten the JavaScript part of your dashboard to include this aggregation logic. The rest of the dashboard (weekly view, stats) remains the same.
-
------
-
-### \#\# What's Changed in the Code
-
-1.  **New Function (`aggregateDataForChart`)**: I've added a new function that takes all of today's raw data points and intelligently groups them into 5-minute "buckets."
-2.  **Smart Analysis**: For each bucket, it calculates whether you spent more time in a "Good" or "Bad" posture and sets that as the value for the entire 5-minute block.
-3.  **Clean Chart**: The line chart now plots these aggregated points, resulting in a clean, stable, and easy-to-read graph that shows your posture trends over time, not every tiny fluctuation.
-
------
-
-### \#\# Full Updated Dashboard Code
-
-Copy and paste this entire code into your `index.html` file. It includes your Firebase configuration and the new, improved charting logic.
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -26,133 +5,32 @@ Copy and paste this entire code into your `index.html` file. It includes your Fi
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BackBeacon - Posture Dashboard</title>
     <style>
-        /* --- Global Styles & Theme --- */
         :root {
-            --bg-color: #121212;
-            --card-color: #1E1E1E;
-            --primary-text: #E0E0E0;
-            --secondary-text: #B3B3B3;
-            --accent-green: #1DB954;
-            --accent-red: #E53935;
-            --accent-blue: #2979FF;
-            --border-color: #2c2c2c;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            --bg-color: #121212; --card-color: #1E1E1E; --primary-text: #E0E0E0;
+            --secondary-text: #B3B3B3; --accent-green: #1DB954; --accent-red: #E53935;
+            --accent-blue: #2979FF; --border-color: #2c2c2c;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--primary-text);
-            margin: 0;
-            padding: 24px;
-            display: flex;
-            justify-content: center;
-        }
-
-        /* --- Main Layout --- */
-        .dashboard-container {
-            display: grid;
-            grid-template-columns: 300px 1fr;
-            gap: 24px;
-            width: 100%;
-            max-width: 1400px;
-        }
-
-        .left-panel, .right-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-        }
-        
-        .card {
-            background-color: var(--card-color);
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid var(--border-color);
-        }
-
-        h1, h2, h3 {
-            margin: 0 0 16px 0;
-            color: var(--primary-text);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 8px;
-        }
-
-        /* --- Left Panel: Weekly Summary --- */
-        .weekly-summary .day {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        .weekly-summary .day:last-child {
-            border-bottom: none;
-        }
-
-        .weekly-summary .day-name {
-            font-weight: 600;
-        }
-        
-        .weekly-summary .day-score {
-            font-weight: bold;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 0.9em;
-        }
-
-        .weekly-summary .day.today {
-            background-color: rgba(41, 121, 255, 0.15);
-            margin: 0 -20px;
-            padding: 12px 20px;
-            border-radius: 8px;
-        }
-
-        /* --- Left Panel: Today's Stats --- */
-        .stat-item {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .stat-item .icon {
-            font-size: 2em;
-        }
-        
-        .stat-item .value {
-            font-size: 1.8em;
-            font-weight: bold;
-        }
-
-        .stat-item .label {
-            font-size: 0.9em;
-            color: var(--secondary-text);
-        }
-
-        /* --- Right Panel: Charts --- */
-        .chart-container {
-            position: relative;
-            height: 100%;
-            min-height: 400px;
-        }
-        
-        .pie-chart-container {
-            max-height: 350px;
-        }
-
-        /* --- Loading and No Data State --- */
-        .placeholder {
-            text-align: center;
-            padding: 40px;
-            color: var(--secondary-text);
-        }
-        
-        /* --- Responsive Design --- */
-        @media (max-width: 900px) {
-            .dashboard-container {
-                grid-template-columns: 1fr;
-            }
-        }
+        body { background-color: var(--bg-color); color: var(--primary-text); margin: 0; padding: 24px; display: flex; justify-content: center; }
+        .dashboard-container { display: grid; grid-template-columns: 300px 1fr; gap: 24px; width: 100%; max-width: 1400px; }
+        .left-panel, .right-panel { display: flex; flex-direction: column; gap: 24px; }
+        .card { background-color: var(--card-color); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); }
+        h2 { margin: 0 0 16px 0; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+        .weekly-summary .day { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+        .weekly-summary .day:last-child { border-bottom: none; }
+        .weekly-summary .day.today { background-color: rgba(41, 121, 255, 0.15); margin: 0 -20px; padding: 12px 20px; border-radius: 8px; }
+        .weekly-summary .day-name { font-weight: 600; }
+        .weekly-summary .day-score { font-weight: bold; padding: 4px 8px; border-radius: 6px; font-size: 0.9em; }
+        .stat-item { display: flex; align-items: center; gap: 16px; }
+        .stat-item .icon { font-size: 2em; }
+        .stat-item .value { font-size: 1.8em; font-weight: bold; }
+        .stat-item .label { font-size: 0.9em; color: var(--secondary-text); }
+        .chart-container { position: relative; height: 100%; min-height: 400px; }
+        .pie-chart-container { max-height: 350px; }
+        .placeholder { text-align: center; padding: 40px; color: var(--secondary-text); }
+        .refresh-button { background-color: var(--accent-blue); color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: center; margin-top: 10px; }
+        .refresh-button:hover { background-color: #1e63d8; }
+        @media (max-width: 900px) { .dashboard-container { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -161,7 +39,7 @@ Copy and paste this entire code into your `index.html` file. It includes your Fi
         <div class="left-panel">
             <div class="card weekly-summary">
                 <h2>Weekly Progress</h2>
-                <div id="weekly-view"><div class="placeholder">Loading weekly data...</div></div>
+                <div id="weekly-view"><div class="placeholder">Click Refresh...</div></div>
             </div>
             <div class="card stats-today">
                 <h2>Today's Analysis</h2>
@@ -188,6 +66,7 @@ Copy and paste this entire code into your `index.html` file. It includes your Fi
                         <div class="label">Overall Posture Score</div>
                     </div>
                 </div>
+                <button id="refreshBtn" class="refresh-button">🔄 Refresh Data</button>
             </div>
         </div>
 
@@ -195,7 +74,7 @@ Copy and paste this entire code into your `index.html` file. It includes your Fi
             <div class="card main-chart-card">
                 <h2>Today's Posture Pattern</h2>
                 <p style="color: var(--secondary-text); margin-top: -10px; font-size: 0.9em;">
-                    Shows your dominant posture in 5-minute intervals. Higher points indicate slouching.
+                    Shows your dominant posture in 5-minute intervals.
                 </p>
                 <div class="chart-container">
                     <canvas id="dailyPatternChart"></canvas>
@@ -215,9 +94,7 @@ Copy and paste this entire code into your `index.html` file. It includes your Fi
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        // =============================================
-        // ========= FIREBASE & CHART SETUP ============
-        // =============================================
+        // FIREBASE CONFIG
         const firebaseConfig = {
             apiKey: "AIzaSyCc8PCc1IYikEQXJ4_5avlOJM9JqIrH7Ac",
             authDomain: "backbeacon.firebaseapp.com",
@@ -235,17 +112,32 @@ Copy and paste this entire code into your `index.html` file. It includes your Fi
         let dailyChartInstance;
         let pieChartInstance;
 
-        // =============================================
-        // =========== DATA PROCESSING LOGIC ===========
-        // =============================================
-        dbRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                processData(data);
-            } else {
-                displayNoDataState();
-            }
+        // --- Event Listener for Refresh Button ---
+        document.getElementById('refreshBtn').addEventListener('click', fetchData);
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+             displayNoDataState();
+             fetchData(); // Fetch data when page first loads
         });
+
+
+        function fetchData() {
+            console.log("Fetching data from Firebase...");
+            document.getElementById('refreshBtn').innerText = '🔄 Loading...';
+            dbRef.once('value').then((snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    processData(data);
+                } else {
+                    displayNoDataState();
+                }
+                document.getElementById('refreshBtn').innerText = '🔄 Refresh Data';
+            }).catch(error => {
+                console.error("Firebase read failed:", error);
+                document.getElementById('refreshBtn').innerText = 'Error! Retry';
+            });
+        }
 
         function processData(firebaseData) {
             const entries = Object.values(firebaseData);
@@ -253,9 +145,11 @@ Copy and paste this entire code into your `index.html` file. It includes your Fi
             const dataByDay = {};
 
             for (const entry of entries) {
-                const entryDate = new Date(entry.timestamp).toLocaleDateString('en-CA');
-                if (!dataByDay[entryDate]) dataByDay[entryDate] = [];
-                dataByDay[entryDate].push(entry);
+                try {
+                    const entryDate = new Date(entry.timestamp).toLocaleDateString('en-CA');
+                    if (!dataByDay[entryDate]) dataByDay[entryDate] = [];
+                    dataByDay[entryDate].push(entry);
+                } catch(e) { /* ignore invalid entries */ }
             }
             
             const todayData = dataByDay[today] || [];
@@ -268,22 +162,18 @@ Copy and paste this entire code into your `index.html` file. It includes your Fi
                 displayNoDataState();
                 return;
             }
-
             data.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
             let totalSitSeconds = 0, goodPostureSeconds = 0, slouchAlerts = 0;
-            let lastPosture = null;
 
             for (let i = 1; i < data.length; i++) {
                 const prev = data[i - 1];
                 const current = data[i];
-                const durationSeconds = (new Date(current.timestamp).getTime() - new Date(prev.timestamp).getTime()) / 1000;
+                const durationSeconds = (new Date(current.timestamp) - new Date(prev.timestamp)) / 1000;
 
                 if (prev.seat_status === "SEATED") {
                     totalSitSeconds += durationSeconds;
-                    if (prev.posture === "Good") {
-                        goodPostureSeconds += durationSeconds;
-                    }
+                    if (prev.posture === "Good") goodPostureSeconds += durationSeconds;
                 }
                 if (current.posture === "Bad" && prev.posture !== "Bad") {
                     slouchAlerts++;
@@ -293,65 +183,45 @@ Copy and paste this entire code into your `index.html` file. It includes your Fi
             const postureScore = totalSitSeconds > 0 ? Math.round((goodPostureSeconds / totalSitSeconds) * 100) : 0;
             const badPostureSeconds = totalSitSeconds - goodPostureSeconds;
             
-            // --- NEW: Aggregate data for the line chart ---
             const aggregatedChartData = aggregateDataForChart(data, 5); // 5-minute intervals
 
             updateTodayStatsUI(totalSitSeconds, slouchAlerts, postureScore);
             renderDailyPatternChart(aggregatedChartData);
             renderPosturePieChart(goodPostureSeconds, badPostureSeconds);
         }
-        
-        // ===================================================================
-        // ============= ⭐ NEW CHART AGGREGATION FUNCTION ⭐ ==============
-        // ===================================================================
+
         function aggregateDataForChart(data, intervalMinutes) {
             if (data.length < 2) return { labels: [], postureState: [] };
         
             const intervalMillis = intervalMinutes * 60 * 1000;
             const buckets = {};
         
-            // Create time buckets
             for (let i = 1; i < data.length; i++) {
-                const prevEntry = data[i-1];
-                const currentEntry = data[i];
+                const prevEntry = data[i-1], currentEntry = data[i];
                 const startTime = new Date(prevEntry.timestamp).getTime();
                 const durationSeconds = (new Date(currentEntry.timestamp).getTime() - startTime) / 1000;
-
                 const bucketKey = Math.floor(startTime / intervalMillis) * intervalMillis;
-                if (!buckets[bucketKey]) {
-                    buckets[bucketKey] = { goodSeconds: 0, badSeconds: 0 };
-                }
+
+                if (!buckets[bucketKey]) buckets[bucketKey] = { goodSeconds: 0, badSeconds: 0 };
 
                 if (prevEntry.seat_status === 'SEATED') {
-                    if (prevEntry.posture === 'Good') {
-                        buckets[bucketKey].goodSeconds += durationSeconds;
-                    } else if (prevEntry.posture === 'Bad') {
-                        buckets[bucketKey].badSeconds += durationSeconds;
-                    }
+                    if (prevEntry.posture === 'Good') buckets[bucketKey].goodSeconds += durationSeconds;
+                    else if (prevEntry.posture === 'Bad') buckets[bucketKey].badSeconds += durationSeconds;
                 }
             }
 
             const sortedKeys = Object.keys(buckets).sort();
-            const labels = [];
-            const postureState = [];
+            const labels = [], postureState = [];
 
             sortedKeys.forEach(key => {
-                const date = new Date(parseInt(key));
-                labels.push(date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
-                
+                labels.push(new Date(parseInt(key)).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
                 const bucket = buckets[key];
-                if (bucket.badSeconds > bucket.goodSeconds) {
-                    postureState.push(2); // Slouching
-                } else if (bucket.goodSeconds > 0) {
-                    postureState.push(1); // Good
-                } else {
-                    postureState.push(0); // Away (or no seated data)
-                }
+                if (bucket.badSeconds > bucket.goodSeconds) postureState.push(2);
+                else if (bucket.goodSeconds > 0) postureState.push(1);
+                else postureState.push(0);
             });
-
             return { labels, postureState };
         }
-        // ===================================================================
 
         function analyzeWeek(dataByDay) {
             const weeklyStats = [];
@@ -359,21 +229,19 @@ Copy and paste this entire code into your `index.html` file. It includes your Fi
                 const date = new Date();
                 date.setDate(date.getDate() - i);
                 const dateKey = date.toLocaleDateString('en-CA');
-                let dayName = i === 0 ? "Today" : date.toLocaleDateString('en-US', { weekday: 'short' });
+                const dayName = i === 0 ? "Today" : date.toLocaleDateString('en-US', { weekday: 'short' });
                 
-                const dayData = dataByDay[dateKey] || [];
                 let score = 0;
+                const dayData = dataByDay[dateKey] || [];
                 
                 if (dayData.length > 1) {
                      dayData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
                      let totalSitSeconds = 0, goodPostureSeconds = 0;
                      for (let j = 1; j < dayData.length; j++) {
-                         const prev = dayData[j - 1];
-                         const curr = dayData[j];
-                         const duration = (new Date(curr.timestamp) - new Date(prev.timestamp)) / 1000;
-                         if (prev.seat_status === "SEATED") {
+                         const duration = (new Date(dayData[j].timestamp) - new Date(dayData[j-1].timestamp)) / 1000;
+                         if (dayData[j-1].seat_status === "SEATED") {
                              totalSitSeconds += duration;
-                             if (prev.posture === "Good") goodPostureSeconds += duration;
+                             if (dayData[j-1].posture === "Good") goodPostureSeconds += duration;
                          }
                      }
                      score = totalSitSeconds > 0 ? Math.round((goodPostureSeconds / totalSitSeconds) * 100) : 0;
@@ -383,7 +251,6 @@ Copy and paste this entire code into your `index.html` file. It includes your Fi
             updateWeeklyUI(weeklyStats);
         }
 
-        // --- UI UPDATE FUNCTIONS ---
         function formatTime(seconds) {
             const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
             const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
@@ -400,13 +267,8 @@ Copy and paste this entire code into your `index.html` file. It includes your Fi
             const container = document.getElementById('weekly-view');
             container.innerHTML = '';
             stats.forEach(stat => {
-                const isToday = stat.dayName === 'Today';
                 const scoreColor = stat.score > 80 ? 'var(--accent-green)' : stat.score > 50 ? 'var(--accent-blue)' : 'var(--accent-red)';
-                container.innerHTML += `
-                    <div class="day ${isToday ? 'today' : ''}">
-                        <span class="day-name">${stat.dayName}</span>
-                        <span class="day-score" style="background-color: ${scoreColor}; color: white;">${stat.score}%</span>
-                    </div>`;
+                container.innerHTML += `<div class="day ${stat.dayName === 'Today' ? 'today' : ''}"><span class="day-name">${stat.dayName}</span><span class="day-score" style="background-color:${scoreColor};color:white;">${stat.score}%</span></div>`;
             });
         }
         
@@ -415,37 +277,28 @@ Copy and paste this entire code into your `index.html` file. It includes your Fi
              document.querySelector('#weekly-view').innerHTML = '<div class="placeholder">No data for this week.</div>';
              if (dailyChartInstance) dailyChartInstance.destroy();
              if (pieChartInstance) pieChartInstance.destroy();
-             document.querySelector('.main-chart-card .chart-container').innerHTML = '<div class="placeholder">Sit on the chair to start tracking posture.</div>';
+             document.querySelector('.main-chart-card .chart-container').innerHTML = '<div class="placeholder">Sit on the chair and click Refresh to track posture.</div>';
              document.querySelector('.pie-chart-card .pie-chart-container').innerHTML = '';
         }
 
-        // --- CHART RENDERING FUNCTIONS ---
         function renderDailyPatternChart(chartData) {
+            const container = document.querySelector('.main-chart-card .chart-container');
+            container.innerHTML = '<canvas id="dailyPatternChart"></canvas>'; // Reset canvas
             const ctx = document.getElementById('dailyPatternChart').getContext('2d');
-            if (dailyChartInstance) dailyChartInstance.destroy();
+            
             dailyChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: chartData.labels,
                     datasets: [{
-                        label: 'Posture State',
-                        data: chartData.postureState,
-                        borderColor: 'rgba(41, 121, 255, 0.8)',
-                        backgroundColor: 'rgba(41, 121, 255, 0.2)',
-                        fill: true,
-                        stepped: true,
+                        label: 'Posture State', data: chartData.postureState, borderColor: 'rgba(41, 121, 255, 0.8)',
+                        backgroundColor: 'rgba(41, 121, 255, 0.2)', fill: true, stepped: true,
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     scales: {
-                        y: {
-                            ticks: {
-                                color: 'var(--secondary-text)',
-                                callback: value => ['Away', 'Good', 'Slouching'][value]
-                            },
-                            grid: { color: 'var(--border-color)' }
-                        },
+                        y: { ticks: { color: 'var(--secondary-text)', callback: value => ['Away', 'Good', 'Slouching'][value] }, grid: { color: 'var(--border-color)' } },
                         x: { ticks: { color: 'var(--secondary-text)' }, grid: { display: false } }
                     },
                     plugins: { legend: { display: false } }
@@ -454,8 +307,10 @@ Copy and paste this entire code into your `index.html` file. It includes your Fi
         }
         
         function renderPosturePieChart(goodSeconds, badSeconds) {
+            const container = document.querySelector('.pie-chart-card .pie-chart-container');
+            container.innerHTML = '<canvas id="posturePieChart"></canvas>'; // Reset canvas
             const ctx = document.getElementById('posturePieChart').getContext('2d');
-            if (pieChartInstance) pieChartInstance.destroy();
+
             pieChartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -463,8 +318,7 @@ Copy and paste this entire code into your `index.html` file. It includes your Fi
                     datasets: [{
                         data: [goodSeconds, badSeconds],
                         backgroundColor: ['var(--accent-green)', 'var(--accent-red)'],
-                        borderColor: 'var(--card-color)',
-                        borderWidth: 4
+                        borderColor: 'var(--card-color)', borderWidth: 4
                     }]
                 },
                 options: {
@@ -476,4 +330,3 @@ Copy and paste this entire code into your `index.html` file. It includes your Fi
     </script>
 </body>
 </html>
-```
